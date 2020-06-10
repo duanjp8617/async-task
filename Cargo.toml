@@ -1,22 +1,11 @@
 [package]
 name = "async-task"
-version = "3.0.0"
-authors = ["Stjepan Glavina <stjepang@gmail.com>"]
+version = "0.1.0"
+authors = ["duanjp8617 <duanjp8617@gmail.com>"]
 edition = "2018"
-license = "Apache-2.0/MIT"
-repository = "https://github.com/stjepang/async-task"
-homepage = "https://github.com/stjepang/async-task"
-documentation = "https://docs.rs/async-task"
-description = "Task abstraction for building executors"
-keywords = ["futures", "task", "executor", "spawn"]
-categories = ["asynchronous", "concurrency", "no-std"]
-readme = "README.md"
 
-[features]
-default = ["std"]
-std = []
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dev-dependencies]
-crossbeam = "0.7.3"
-futures = "0.3.4"
-lazy_static = "1.4.0"
+[dependencies]
+async-std = "1.6.0"
+surf = "1.0.3"
