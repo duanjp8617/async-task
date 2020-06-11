@@ -1,8 +1,8 @@
 #![feature(async_closure)]
-use async_std::task;
 
 mod surf_test;
+mod block_on;
 
 fn main() {
-    task::block_on(surf_test::get_urls());
+    block_on::run();
 }
