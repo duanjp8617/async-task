@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::task::{Poll, Context, Waker};
 use std::thread;
+use std::cell::RefCell;
 
 use crossbeam::sync::Parker;
 
@@ -10,24 +11,26 @@ fn block_on<F: Future>(f : F) -> F::Output {
     pin_utils::pin_mut!(f);
 
     thread_local! {
-        static CACHE : (Parker, Waker) = {
+        static CACHE : RefCell<(Parker, Waker)> = {
             let parker = Parker::new();
             let unparker = parker.unparker().clone();
             let waker = async_task::waker_fn(move ||{
                 println!("calling waker from thread {:?}", thread::current().id());
                 unparker.unpark();
             });
-            (parker, waker)
+            RefCell::new((parker, waker))
         }
     }
 
     CACHE.with( |cache| {
-        let ctx = &mut Context::from_waker(& cache.1);
+        let pair = cache.try_borrow_mut().expect("block_on can only be entered once");
+
+        let ctx = &mut Context::from_waker(& pair.1);
 
         loop {
             match f.as_mut().poll(ctx) {
                 Poll::Ready(output) => return output,
-                Poll::Pending => cache.0.park()
+                Poll::Pending => pair.0.park()
             }
         }
     })
