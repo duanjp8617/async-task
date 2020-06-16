@@ -116,7 +116,7 @@
 //! [`Waker`]: https://doc.rust-lang.org/std/task/struct.Waker.html
 //! [`block_on`]: https://github.com/async-rs/async-task/blob/master/examples/block.rs
 
-#![no_std]
+// #![no_std]
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(test(attr(allow(unused_extern_crates, unused_variables))))]
@@ -137,3 +137,8 @@ pub use crate::waker_fn::waker_fn;
 
 #[cfg(feature = "std")]
 pub use crate::task::spawn_local;
+
+
+mod tprint;
+pub use crate::tprint::tprint;
+pub use crate::tprint::format_state;

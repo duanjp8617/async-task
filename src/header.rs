@@ -8,6 +8,8 @@ use crate::raw::TaskVTable;
 use crate::state::*;
 use crate::utils::{abort_on_panic, extend};
 
+use crate::tprint::*;
+
 /// The header of a task.
 ///
 /// This header is stored right at the beginning of every heap-allocated task.
@@ -91,6 +93,13 @@ impl Header {
     pub(crate) fn register(&self, waker: &Waker) {
         // Load the state and synchronize with it.
         let mut state = self.state.fetch_or(0, Ordering::Acquire);
+        
+        unsafe {
+            let p = self as *const Header as *const u8;
+            let layout_header = Layout::new::<Header>();
+            let ptag = p.add(layout_header.size()) as *const i32;
+            tprint(&format!("[Task {}] [Header::register] {:?} -> sync state",  &*ptag, self));
+        }
 
         loop {
             // There can't be two concurrent registrations because `JoinHandle` can only be polled
@@ -101,6 +110,14 @@ impl Header {
             // registering.
             if state & NOTIFYING != 0 {
                 abort_on_panic(|| waker.wake_by_ref());
+
+                unsafe {
+                    let p = self as *const Header as *const u8;
+                    let layout_header = Layout::new::<Header>();
+                    let ptag = p.add(layout_header.size()) as *const i32;
+                    tprint(&format!("[Task {}] [Header::register] {:?} -> task has been notified",  &*ptag, self));
+                }
+
                 return;
             }
 
@@ -119,6 +136,13 @@ impl Header {
             }
         }
 
+        unsafe {
+            let p = self as *const Header as *const u8;
+            let layout_header = Layout::new::<Header>();
+            let ptag = p.add(layout_header.size()) as *const i32;
+            tprint(&format!("[Task {}] [Header::register] {:?} -> set state to register",  &*ptag, self));
+        }
+
         // Put the waker into the awaiter field.
         unsafe {
             abort_on_panic(|| (*self.awaiter.get()) = Some(waker.clone()));
@@ -134,6 +158,13 @@ impl Header {
                 if let Some(w) = unsafe { (*self.awaiter.get()).take() } {
                     abort_on_panic(|| waker = Some(w));
                 }
+
+                unsafe {
+                    let p = self as *const Header as *const u8;
+                    let layout_header = Layout::new::<Header>();
+                    let ptag = p.add(layout_header.size()) as *const i32;
+                    tprint(&format!("[Task {}] [Header::register] {:?} -> task has been notified",  &*ptag, self));
+                }
             }
 
             // The new state is not being notified nor registered, but there might or might not be
@@ -148,7 +179,15 @@ impl Header {
                 .state
                 .compare_exchange_weak(state, new, Ordering::AcqRel, Ordering::Acquire)
             {
-                Ok(_) => break,
+                Ok(_) => {
+                    unsafe {
+                        let p = self as *const Header as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;
+                        tprint(&format!("[Task {}] [Header::register] {} -> setting new",  &*ptag, format_state(new)));
+                    }
+                    break
+                },
                 Err(s) => state = s,
             }
         }
@@ -172,15 +211,6 @@ impl Header {
 impl fmt::Debug for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state = self.state.load(Ordering::SeqCst);
-
-        f.debug_struct("Header")
-            .field("scheduled", &(state & SCHEDULED != 0))
-            .field("running", &(state & RUNNING != 0))
-            .field("completed", &(state & COMPLETED != 0))
-            .field("closed", &(state & CLOSED != 0))
-            .field("awaiter", &(state & AWAITER != 0))
-            .field("handle", &(state & HANDLE != 0))
-            .field("ref_count", &(state / REFERENCE))
-            .finish()
+        write!(f, "{}", format_state(state))
     }
 }

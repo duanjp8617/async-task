@@ -9,6 +9,9 @@ use core::task::{Context, Poll, Waker};
 use crate::header::Header;
 use crate::state::*;
 
+use crate::tprint::tprint;
+use alloc::alloc::Layout;
+
 /// A handle that awaits the result of a task.
 ///
 /// This type is a future that resolves to an `Option<R>` where:
@@ -193,6 +196,13 @@ impl<R, T> Future for JoinHandle<R, T> {
         let header = ptr as *const Header;
 
         unsafe {
+            {
+                let p = ptr as *const u8;
+                let layout_header = Layout::new::<Header>();
+                let ptag = p.add(layout_header.size()) as *const i32;
+                let pheader = p as *const Header;
+                tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> before loop",  &*ptag, &*pheader));
+            }
             let mut state = (*header).state.load(Ordering::Acquire);
 
             loop {
@@ -223,8 +233,23 @@ impl<R, T> Future for JoinHandle<R, T> {
 
                 // If the task is not completed, register the current task.
                 if state & COMPLETED == 0 {
+                    {
+                        let p = ptr as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;
+                        let pheader = p as *const Header;
+                        tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> trying to register a waker",  &*ptag, &*pheader));
+                    }
                     // Replace the waker with one associated with the current task.
                     (*header).register(cx.waker());
+
+                    {
+                        let p = ptr as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;
+                        let pheader = p as *const Header;
+                        tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> finish register a waker",  &*ptag, &*pheader));
+                    }
 
                     // Reload the state after registering. It is possible that the task became
                     // completed or closed just before registration so we need to check for that.

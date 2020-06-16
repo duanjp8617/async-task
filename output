@@ -1,0 +1,44 @@
+ThreadId(1): spawning a new task 1
+ThreadId(1): schedule task 1
+ThreadId(1): polling Self-defined JoinHandle
+ThreadId(3): run task 1
+ThreadId(1): [Task 1] [JoinHandle::poll] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> before loop
+ThreadId(3): [Task 1] [RawTask::run] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> before unmarking scheduling and marking running
+ThreadId(1): [Task 1] [JoinHandle::poll] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> trying to register a waker
+ThreadId(3): [Task 1] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> after unmarking scheduling and marking running
+ThreadId(1): [Task 1] [Header::register] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> sync state
+ThreadId(1): [Task 1] [Header::register] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:t, Notifying:f, Rc:1] -> set state to register
+ThreadId(3): spawning a new task 2
+ThreadId(1): [Task 1] [Header::register] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> setting new
+ThreadId(1): [Task 1] [JoinHandle::poll] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> finish register a waker
+ThreadId(3): schedule task 2
+ThreadId(3): polling Self-defined JoinHandle
+ThreadId(4): run task 2
+ThreadId(3): [Task 2] [JoinHandle::poll] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> before loop
+ThreadId(4): [Task 2] [RawTask::run] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> before unmarking scheduling and marking running
+ThreadId(3): [Task 2] [JoinHandle::poll] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> trying to register a waker
+ThreadId(4): [Task 2] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> after unmarking scheduling and marking running
+ThreadId(4): run async_closure
+ThreadId(3): [Task 2] [Header::register] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:1] -> sync state
+ThreadId(4): [Task 2] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:2] -> after polling future
+ThreadId(3): [Task 2] [Header::register] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:f, Registering:t, Notifying:f, Rc:2] -> set state to register
+ThreadId(3): [Task 2] [Header::register] [Hdr: Schedule:f, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> setting new
+ThreadId(3): [Task 2] [JoinHandle::poll] [Hdr: Schedule:f, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> finish register a waker
+ThreadId(3): [Task 1] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:2] -> after polling future
+ThreadId(2): send to the sender channel
+ThreadId(2): schedule task 2
+ThreadId(5): run task 2
+ThreadId(5): [Task 2] [RawTask::run] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> before unmarking scheduling and marking running
+ThreadId(5): [Task 2] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> after unmarking scheduling and marking running
+ThreadId(5): [Task 2] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> after polling future
+ThreadId(5): schedule task 1
+ThreadId(5): run task 1
+ThreadId(5): [Task 1] [RawTask::run] [Hdr: Schedule:t, Run:f, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> before unmarking scheduling and marking running
+ThreadId(5): [Task 1] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> after unmarking scheduling and marking running
+ThreadId(5): polling Self-defined JoinHandle
+ThreadId(5): [Task 2] [JoinHandle::poll] [Hdr: Schedule:f, Run:f, Completed:t, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:0] -> before loop
+ThreadId(5): [Task 1] [RawTask::run] [Hdr: Schedule:f, Run:t, Completed:f, Closed:f, Handle:t, Awaiter:t, Registering:f, Notifying:f, Rc:1] -> after polling future
+ThreadId(5): waker is called to unpark
+ThreadId(1): polling Self-defined JoinHandle
+ThreadId(1): [Task 1] [JoinHandle::poll] [Hdr: Schedule:f, Run:f, Completed:t, Closed:f, Handle:t, Awaiter:f, Registering:f, Notifying:f, Rc:0] -> before loop
+1

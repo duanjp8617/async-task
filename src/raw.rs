@@ -13,6 +13,8 @@ use crate::state::*;
 use crate::utils::{abort, abort_on_panic, extend};
 use crate::Task;
 
+use crate::tprint::tprint;
+
 /// The vtable for a task.
 pub(crate) struct TaskVTable {
     /// Schedules the task.
@@ -460,6 +462,8 @@ where
 
         let mut state = (*raw.header).state.load(Ordering::Acquire);
 
+        tprint(&format!("[Task {}] [RawTask::run] {:?} -> before unmarking scheduling and marking running", (*(raw.tag as *const i32)), &(*raw.header)));
+
         // Update the task's state before polling its future.
         loop {
             // If the task has already been closed, drop the task reference and return.
@@ -496,11 +500,15 @@ where
             }
         }
 
+        tprint(&format!("[Task {}] [RawTask::run] {:?} -> after unmarking scheduling and marking running", (*(raw.tag as *const i32)),  & (*raw.header)));
+
         // Poll the inner future, but surround it with a guard that closes the task in case polling
         // panics.
         let guard = Guard(raw);
         let poll = <F as Future>::poll(Pin::new_unchecked(&mut *raw.future), cx);
         mem::forget(guard);
+
+        tprint(&format!("[Task {}] [RawTask::run] {:?} -> after polling future", (*(raw.tag as *const i32)), & (*raw.header)));
 
         match poll {
             Poll::Ready(out) => {
