@@ -78,9 +78,32 @@ impl Header {
             if let Some(w) = waker {
                 // We need a safeguard against panics because waking can panic.
                 abort_on_panic(|| match current {
-                    None => w.wake(),
-                    Some(c) if !w.will_wake(c) => w.wake(),
-                    Some(_) => {}
+                    None => {
+                        unsafe {
+                            let p = self as *const Header as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;
+                            tprint(&format!("[Task {}] [Header::notify] {} -> branch 1",  &*ptag, format_state(state)));
+                        }
+                        w.wake()
+                    },
+                    Some(c) if !w.will_wake(c) => {
+                        unsafe {
+                            let p = self as *const Header as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;
+                            tprint(&format!("[Task {}] [Header::notify] {} -> branch 2",  &*ptag, format_state(state)));
+                        }
+                        w.wake()
+                    },
+                    Some(_) => {
+                        unsafe {
+                            let p = self as *const Header as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;
+                            tprint(&format!("[Task {}] [Header::notify] {} -> branch 3",  &*ptag, format_state(state)));
+                        }
+                    }
                 });
             }
         }

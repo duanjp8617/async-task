@@ -43,10 +43,22 @@ impl<R, T> JoinHandle<R, T> {
 
         unsafe {
             let mut state = (*header).state.load(Ordering::Acquire);
+            {
+                let p = ptr as *const u8;
+                let layout_header = Layout::new::<Header>();
+                let ptag = p.add(layout_header.size()) as *const i32;                
+                tprint(&format!("[Task {}] [JoinHandle::cancel] {} -> sync state",  &*ptag, format_state(state)));
+            }
 
             loop {
                 // If the task has been completed or closed, it can't be canceled.
                 if state & (COMPLETED | CLOSED) != 0 {
+                    {
+                        let p = ptr as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;                
+                        tprint(&format!("[Task {}] [JoinHandle::cancel] -> complted or closed, quit directly",  &*ptag));
+                    }
                     break;
                 }
 
@@ -65,14 +77,35 @@ impl<R, T> JoinHandle<R, T> {
                     Ordering::Acquire,
                 ) {
                     Ok(_) => {
+                        {
+                            let p = ptr as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;                
+                            tprint(&format!("[Task {}] [JoinHandle::cancel] -> old header: {}",  &*ptag, format_state(state)));
+                            tprint(&format!("[Task {}] [JoinHandle::cancel] -> new header: {}",  &*ptag, format_state(new)));
+                        }
+
                         // If the task is not scheduled nor running, schedule it one more time so
                         // that its future gets dropped by the executor.
                         if state & (SCHEDULED | RUNNING) == 0 {
+                            {
+                                let p = ptr as *const u8;
+                                let layout_header = Layout::new::<Header>();
+                                let ptag = p.add(layout_header.size()) as *const i32;                
+                                tprint(&format!("[Task {}] [JoinHandle::cancel] -> re-schedule the task", &*ptag));
+                            }
+                
                             ((*header).vtable.schedule)(ptr);
                         }
 
                         // Notify the awaiter that the task has been closed.
                         if state & AWAITER != 0 {
+                            {
+                                let p = ptr as *const u8;
+                                let layout_header = Layout::new::<Header>();
+                                let ptag = p.add(layout_header.size()) as *const i32;                
+                                tprint(&format!("[Task {}] [JoinHandle::cancel] -> notify awaiter", &*ptag));
+                            }
                             (*header).notify(None);
                         }
 
@@ -228,6 +261,12 @@ impl<R, T> Future for JoinHandle<R, T> {
                     // Even though the awaiter is most likely the current task, it could also be
                     // another task.
                     (*header).notify(Some(cx.waker()));
+                    {
+                        let p = ptr as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;                
+                        tprint(&format!("[Task {}] [JoinHandle::poll] {} -> notify",  &*ptag, format_state(state)));
+                    }
                     return Poll::Ready(None);
                 }
 

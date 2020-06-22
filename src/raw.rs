@@ -466,7 +466,7 @@ where
 
         let mut state = (*raw.header).state.load(Ordering::Acquire);
 
-        tprint(&format!("[Task {}] [RawTask::run] {} -> before unmarking scheduling and marking running", (*(raw.tag as *const i32)), format_state(state)));
+        tprint(&format!("[Task {}] [RawTask::run] {} -> acquire state", (*(raw.tag as *const i32)), format_state(state)));
 
         // Update the task's state before polling its future.
         loop {
