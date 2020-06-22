@@ -33,10 +33,10 @@ where
     R : Send + 'static,
 {
     let (task, handle) = async_task::spawn(f, |task| {        
-        async_task::tprint(&format!("schedule task {}", task.tag()));
+        async_task::tprint(&format!("[Task {}] [schedule closure] -> schedule closure is called", task.tag()));
         SENDER.send(task).unwrap();
     }, t);
-    async_task::tprint(&format!("spawning a new task {}", task.tag()));
+    async_task::tprint(&format!("[Task {}] [executor1::spawn] -> creating a new task", task.tag()));
     task.schedule();
     
     JoinHandle {
@@ -54,7 +54,9 @@ impl<R, T> Future for JoinHandle<R, T> {
     type Output = R;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        async_task::tprint("polling Self-defined JoinHandle");
+        unsafe {
+            async_task::tprint(&format!("[Task {}] [Self-defined JoinHandle::poll] -> polling Self-defined JoinHandle", &*(self.inner.tag() as *const T as *const i32)));
+        }
         match Future::poll(Pin::new(&mut self.get_mut().inner), cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(option_r) => {
@@ -74,7 +76,7 @@ where
     let parker = Parker::new();
     let unparker = parker.unparker().clone();
     let waker = async_task::waker_fn(move || {
-        async_task::tprint("waker is called to unpark");
+        async_task::tprint("[Waker] -> waker is called to unpark");
         unparker.unpark();
     });
     let ctx = &mut Context::from_waker(&waker);
@@ -94,13 +96,13 @@ fn main() {
 
     let t = std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(1));        
-        async_task::tprint("send to the sender channel");
+        async_task::tprint("[Thread Closure] -> send to the sender channel");
         s.send(1).unwrap();
     });
 
     let r = block_on(async move {
         let jh = spawn(async move {            
-            async_task::tprint("run async_closure");
+            async_task::tprint("[async closure] -> run async_closure");
             r.await.unwrap()
         }, 2);
 

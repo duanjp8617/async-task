@@ -13,7 +13,7 @@ use crate::state::*;
 use crate::utils::{abort, abort_on_panic, extend};
 use crate::Task;
 
-use crate::tprint::tprint;
+use crate::tprint::*;
 
 /// The vtable for a task.
 pub(crate) struct TaskVTable {
@@ -207,6 +207,7 @@ where
         let raw = Self::from_ptr(ptr);
 
         let mut state = (*raw.header).state.load(Ordering::Acquire);
+        tprint(&format!("[Task {}] [RawTask::wake] {:?} -> wake is called", (*(raw.tag as *const i32)),format_state(state)));
 
         loop {
             // If the task is completed or closed, it can't be woken up.
@@ -265,6 +266,7 @@ where
         let raw = Self::from_ptr(ptr);
 
         let mut state = (*raw.header).state.load(Ordering::Acquire);
+        tprint(&format!("[Task {}] [RawTask::wake_by_ref] {:?} -> wake_by_ref is called", (*(raw.tag as *const i32)),format_state(state)));
 
         loop {
             // If the task is completed or closed, it can't be woken up.
@@ -333,7 +335,9 @@ where
         // Increment the reference count. With any kind of reference-counted data structure,
         // relaxed ordering is appropriate when incrementing the counter.
         let state = (*raw.header).state.fetch_add(REFERENCE, Ordering::Relaxed);
-
+        
+        tprint(&format!("[Task {}] [RawTask::clone_waker] {:?} -> increasing task reference", (*(raw.tag as *const i32)), &(*(raw.header))));
+        
         // If the reference count overflowed, abort.
         if state > isize::max_value() as usize {
             abort();
@@ -462,7 +466,7 @@ where
 
         let mut state = (*raw.header).state.load(Ordering::Acquire);
 
-        tprint(&format!("[Task {}] [RawTask::run] {:?} -> before unmarking scheduling and marking running", (*(raw.tag as *const i32)), &(*raw.header)));
+        tprint(&format!("[Task {}] [RawTask::run] {} -> before unmarking scheduling and marking running", (*(raw.tag as *const i32)), format_state(state)));
 
         // Update the task's state before polling its future.
         loop {
@@ -500,7 +504,7 @@ where
             }
         }
 
-        tprint(&format!("[Task {}] [RawTask::run] {:?} -> after unmarking scheduling and marking running", (*(raw.tag as *const i32)),  & (*raw.header)));
+        tprint(&format!("[Task {}] [RawTask::run] {} -> after unmarking scheduling and marking running", (*(raw.tag as *const i32)), format_state(state)));
 
         // Poll the inner future, but surround it with a guard that closes the task in case polling
         // panics.
@@ -508,7 +512,7 @@ where
         let poll = <F as Future>::poll(Pin::new_unchecked(&mut *raw.future), cx);
         mem::forget(guard);
 
-        tprint(&format!("[Task {}] [RawTask::run] {:?} -> after polling future", (*(raw.tag as *const i32)), & (*raw.header)));
+        tprint(&format!("[Task {}] [RawTask::run] {:?} -> after polling future", (*(raw.tag as *const i32)), &(*raw.header)));
 
         match poll {
             Poll::Ready(out) => {
@@ -539,12 +543,14 @@ where
                             // If the handle is dropped or if the task was closed while running,
                             // now it's time to drop the output.
                             if state & HANDLE == 0 || state & CLOSED != 0 {
+                                tprint(&format!("[Task {}] [RawTask::run] {:?} -> drop output", (*(raw.tag as *const i32)), format_state(state)));
                                 // Read the output.
                                 output = Some(raw.output.read());
                             }
 
                             // Notify the awaiter that the task has been completed.
                             if state & AWAITER != 0 {
+                                tprint(&format!("[Task {}] [RawTask::run] {:?} -> notify awaiter", (*(raw.tag as *const i32)), format_state(state)));
                                 (*raw.header).notify(None);
                             }
 

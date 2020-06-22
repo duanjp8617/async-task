@@ -9,7 +9,7 @@ use core::task::{Context, Poll, Waker};
 use crate::header::Header;
 use crate::state::*;
 
-use crate::tprint::tprint;
+use crate::tprint::*;
 use alloc::alloc::Layout;
 
 /// A handle that awaits the result of a task.
@@ -195,15 +195,15 @@ impl<R, T> Future for JoinHandle<R, T> {
         let ptr = self.raw_task.as_ptr();
         let header = ptr as *const Header;
 
-        unsafe {
+        unsafe {           
+            let mut state = (*header).state.load(Ordering::Acquire);
+
             {
                 let p = ptr as *const u8;
                 let layout_header = Layout::new::<Header>();
-                let ptag = p.add(layout_header.size()) as *const i32;
-                let pheader = p as *const Header;
-                tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> before loop",  &*ptag, &*pheader));
+                let ptag = p.add(layout_header.size()) as *const i32;                
+                tprint(&format!("[Task {}] [JoinHandle::poll] {} -> load state for polling",  &*ptag, format_state(state)));
             }
-            let mut state = (*header).state.load(Ordering::Acquire);
 
             loop {
                 // If the task has been closed, notify the awaiter and return `None`.
@@ -236,24 +236,22 @@ impl<R, T> Future for JoinHandle<R, T> {
                     {
                         let p = ptr as *const u8;
                         let layout_header = Layout::new::<Header>();
-                        let ptag = p.add(layout_header.size()) as *const i32;
-                        let pheader = p as *const Header;
-                        tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> trying to register a waker",  &*ptag, &*pheader));
+                        let ptag = p.add(layout_header.size()) as *const i32;         
+                        tprint(&format!("[Task {}] [JoinHandle::Poll] -> task is not complted, register a waker", &*ptag));
                     }
                     // Replace the waker with one associated with the current task.
                     (*header).register(cx.waker());
 
-                    {
-                        let p = ptr as *const u8;
-                        let layout_header = Layout::new::<Header>();
-                        let ptag = p.add(layout_header.size()) as *const i32;
-                        let pheader = p as *const Header;
-                        tprint(&format!("[Task {}] [JoinHandle::poll] {:?} -> finish register a waker",  &*ptag, &*pheader));
-                    }
-
                     // Reload the state after registering. It is possible that the task became
                     // completed or closed just before registration so we need to check for that.
                     state = (*header).state.load(Ordering::Acquire);
+
+                    {
+                        let p = ptr as *const u8;
+                        let layout_header = Layout::new::<Header>();
+                        let ptag = p.add(layout_header.size()) as *const i32;                        
+                        tprint(&format!("[Task {}] [JoinHandle::poll] {} -> finish register an awaiter, sync state",  &*ptag, format_state(state)));
+                    }
 
                     // If the task has been closed, restart.
                     if state & CLOSED != 0 {
@@ -262,6 +260,12 @@ impl<R, T> Future for JoinHandle<R, T> {
 
                     // If the task is still not completed, we're blocked on it.
                     if state & COMPLETED == 0 {
+                        {
+                            let p = ptr as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;                        
+                            tprint(&format!("[Task {}] [JoinHandle::poll] -> task is not completed, return pending",  &*ptag));
+                        }
                         return Poll::Pending;
                     }
                 }
@@ -274,14 +278,33 @@ impl<R, T> Future for JoinHandle<R, T> {
                     Ordering::Acquire,
                 ) {
                     Ok(_) => {
+                        {
+                            let p = ptr as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;                        
+                            tprint(&format!("[Task {}] [JoinHandle::poll] {} -> task is closed in JoinHandle",  &*ptag, format_state(state | CLOSED)));
+                        }    
+
                         // Notify the awaiter. Even though the awaiter is most likely the current
                         // task, it could also be another task.
                         if state & AWAITER != 0 {
+                            {
+                                let p = ptr as *const u8;
+                                let layout_header = Layout::new::<Header>();
+                                let ptag = p.add(layout_header.size()) as *const i32;                        
+                                tprint(&format!("[Task {}] [JoinHandle::poll] -> notify awaiter",  &*ptag));
+                            }
                             (*header).notify(Some(cx.waker()));
                         }
 
                         // Take the output from the task.
                         let output = ((*header).vtable.get_output)(ptr) as *mut R;
+                        {
+                            let p = ptr as *const u8;
+                            let layout_header = Layout::new::<Header>();
+                            let ptag = p.add(layout_header.size()) as *const i32;                        
+                            tprint(&format!("[Task {}] [JoinHandle::poll] -> task finishes, return output",  &*ptag));
+                        }
                         return Poll::Ready(Some(output.read()));
                     }
                     Err(s) => state = s,

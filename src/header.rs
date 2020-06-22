@@ -98,7 +98,7 @@ impl Header {
             let p = self as *const Header as *const u8;
             let layout_header = Layout::new::<Header>();
             let ptag = p.add(layout_header.size()) as *const i32;
-            tprint(&format!("[Task {}] [Header::register] {:?} -> sync state",  &*ptag, self));
+            tprint(&format!("[Task {}] [Header::register] {} -> load state with fetch_or(0)?",  &*ptag, format_state(state)));
         }
 
         loop {
@@ -115,7 +115,7 @@ impl Header {
                     let p = self as *const Header as *const u8;
                     let layout_header = Layout::new::<Header>();
                     let ptag = p.add(layout_header.size()) as *const i32;
-                    tprint(&format!("[Task {}] [Header::register] {:?} -> task has been notified",  &*ptag, self));
+                    tprint(&format!("[Task {}] [Header::register] {:?} -> in notifying state, wake_by_ref is called",  &*ptag, self));
                 }
 
                 return;
@@ -140,7 +140,7 @@ impl Header {
             let p = self as *const Header as *const u8;
             let layout_header = Layout::new::<Header>();
             let ptag = p.add(layout_header.size()) as *const i32;
-            tprint(&format!("[Task {}] [Header::register] {:?} -> set state to register",  &*ptag, self));
+            tprint(&format!("[Task {}] [Header::register] {:?} -> turn register on, register: t, notifying: f",  &*ptag, self));
         }
 
         // Put the waker into the awaiter field.
@@ -163,7 +163,7 @@ impl Header {
                     let p = self as *const Header as *const u8;
                     let layout_header = Layout::new::<Header>();
                     let ptag = p.add(layout_header.size()) as *const i32;
-                    tprint(&format!("[Task {}] [Header::register] {:?} -> task has been notified",  &*ptag, self));
+                    tprint(&format!("[Task {}] [Header::register] {:?} -> task has been notified, take waker out",  &*ptag, self));
                 }
             }
 
@@ -184,7 +184,7 @@ impl Header {
                         let p = self as *const Header as *const u8;
                         let layout_header = Layout::new::<Header>();
                         let ptag = p.add(layout_header.size()) as *const i32;
-                        tprint(&format!("[Task {}] [Header::register] {} -> setting new",  &*ptag, format_state(new)));
+                        tprint(&format!("[Task {}] [Header::register] {} -> finish registering",  &*ptag, format_state(new)));
                     }
                     break
                 },
