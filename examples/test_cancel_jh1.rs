@@ -29,6 +29,17 @@ lazy_static! {
     };
 }
 
+/// Timeline:
+/// 1. The task is scheduled to run, and returns pending because the channel is not ready for a read.
+/// 2. Join handle cancels the task when the task is idle (neither scheduled nor run) and has no awaiter
+///    (the join handle is not polled for result). In this case, the task is scheduled again to drop the future object.
+/// 3. The join handle polls the task, found the task to be closed and running (the result of step 2). In this case, the join
+///    handle will register a waker and return pending. The piece of program which polls the join handle will be scheduled to poll
+///    the join handle again once the task finishes closing and releasing its associated resources.
+/// 4. The task gets scheduled, finds out that it is closed, deallocate the future object, and notifies the associated awaiter 
+///    registered in step 3.
+/// 5. The join handle gets polled again and returns none.
+
 fn block<F, R>(f : F) -> Option<R>
 where 
     F : Future<Output=R> + Send + 'static,
