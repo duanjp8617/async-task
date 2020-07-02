@@ -42,7 +42,8 @@ where
 
     // create a new task and the associated join handle
     let (task, mut jh) = async_task::spawn(f, |task|{
-        SENDER.send(task).unwrap();
+        // SENDER.send(task).unwrap();
+        task.schedule();
     }, 1);
 
     // schedule the task
