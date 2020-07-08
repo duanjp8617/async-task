@@ -452,6 +452,18 @@ where
     /// If polling its future panics, the task will be closed and the panic will be propagated into
     /// the caller.
     unsafe fn run(ptr: *const ()) -> bool {
+        // djp analysis:
+        // What code can call run:
+        // If run is called, then the task should be polled out from a scheduling queue. 
+        // It is also possible that the task calls the run method when it is inside the 
+        // schedule closure or just created after spawning, but these conditions are 
+        // unrecommended ways to run the task.
+
+        // Other reference counted objects that coexist with the task:
+        // 1. Waker. There may be multiple wakers that coexists with the task. 
+        // 2. JoinHandle. There may be a join handle that awaits the result of this task.Drop
+        
+
         let raw = Self::from_ptr(ptr);
 
         // Create a context from the raw task pointer and the vtable inside the its header.
