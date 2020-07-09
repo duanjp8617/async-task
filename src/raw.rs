@@ -461,7 +461,64 @@ where
 
         // Other reference counted objects that coexist with the task:
         // 1. Waker. There may be multiple wakers that coexists with the task. 
-        // 2. JoinHandle. There may be a join handle that awaits the result of this task.Drop
+        //    1.1 A waker may be created by calling the waker method of a task.
+        //    1.2 A waker may be created when polling task's future. If task's future is 
+        //        about to return pending, then a new waker may be created to later wake 
+        //        the task up.
+        // 2. JoinHandle. There may be a join handle that awaits the result of this task.
+        //    The join handle is created together with the task.
+
+        // Events that may concurrently occur when running the run method
+        // 1. Waker wakes up. 
+        // 2. Waker drops. 
+        // 3. JoinHandle cancels. 
+        // 4. JoinHandle polls.
+        // 5. JoinHandle drops.
+        // Note:
+        // 3, 4, 5 are actually linearized, only one of 3, 4, 5 may occur at any moment.
+        // 1, 2 of a single waker is linearized, only one of 1, 2 of a single waker may occur at any moment.
+        // There might be multiple wakers when running the run methods. So the 1, 2 of multiple wakers may concurrently 
+        // occur.
+
+        // What each event will do.
+        // 1. Waker wakes up: It may schedule the task if the task is not running or scheduled.
+        // 2. Waker drops: It may destroy the task if the reference counter drops to zero and the HANDLE mark is unmarked.
+        // 3. JoinHandle cancels. It will mark the CLOSED bit if the task is not COMPLETED and CLOSED. It will then try to 
+        //    reschedule the task if the task is not running or scheduled. It will also try to make an early notification 
+        //    to the awaiter.
+        // 4. JoinHandle polls: It may register an awaiter if the task is not completed or if the task is closed and not running.
+        //    If the task is ***completed***, it will mark the task as closed.
+        // 5. JoinHandle Drops: If the task is ***completed*** and not closed, the state will be marked as closed.
+        //    Otherwise, if the reference is dropped to zero and the task is not closed. The task will be marked as 
+        //    SCHEDULED + CLOSED + REFERENCE and scheduled again.
+        //    To be analyzed.
+         
+        // Phase0, to be scheduled and sent into the schedule queue.
+        // Possible initial state: 
+        // 1. SCHEDULED + !RUNNING + !COMPLETED + CLOSED + REFERENCE + !HANDLE + (!AWAITER or AWAITER)
+        // Cause: 
+        //   1. When JoinHandle drops, not completed, not closed, the reference counter is dropped to zero.
+        //   2. When Waker drops, not completed, not closed, the reference counter is dropped to zero, the HANDLE is dropped.
+        // 2. SCHEDULED + !RUNNING + !COMPLETED + CLOSED + REFERENCE >= 1 + (!HANDLE or HANDLE) + (!AWAITER or AWAITER)
+        // Cause:
+        //   1. When JoinHandle cancels, not completed, not closed, the task is not running or scheduling.
+        // 3. SCHEDULED + !RUNNING + !COMPLETED + !CLOSED + REFERENCE >= 1 + (!HANDLE or HANDLE) + (!AWAITER or AWAITER)  
+        // Cause:
+        //   1. When the waker wakes the task and task is not scheduled.
+
+        // Phase1, from the start of the schedule to the first time that the state variable is loaded.
+        // During this phase, several events will have no effects:
+        // 1. Waker wakes up: Waker will try to mark the state as SCHEDULED, but in this PHASE, SCHEDULED is always marked.
+        //    So waking up has no effect.
+        // 2. Waker drops: When the waker drops, it will decrease the reference counter. But the reference counter will not drop 
+        //    to zero in this phase as the task already holds a reference.
+        // 3. 
+
+
+        // Timeline 1:
+        // Phase1: Start of the function to the first load of the state variable.
+        // Invariant: SCHEDULED, !RUNNING, !COMPLETED, REFERECNE >= 1.
+
         
 
         let raw = Self::from_ptr(ptr);
