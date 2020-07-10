@@ -516,6 +516,20 @@ where
         //    reference.
         // 
 
+        // Remarks on state change of the task
+        // SCHEDULED -> RUNNING -> SCHEDULED -> RUNNING -> COMPLETED -> Result polled out -> CLOSED
+        // SCHEDULED -> RUNNING -> CLOSED -> Wait for the task to stop scheduling -> None Polled out
+        // SCHEDULED -> RUNNING -> Pending polled out.
+        
+        // Remarks on the behavior of JoinHandle poll
+        // If I poll and I find that the state is closed, then I must eventually return None.
+        // If I poll and I find that the state is completed and not closed, then I will fetch the result out, turn the state 
+        // to closed and return the result.
+        // If I poll and I find that the state is not completed and not closed, then I will register an awaiter and return 
+        // Pending. 
+        // If I poll and I find that the state is closed, but the task is under scheduling and running, then I will register an 
+        // awaiter and return pending. When the task finishes running, it will wake me up and return None.
+
 
         // Condition 1
         // Initial state:
@@ -523,14 +537,33 @@ where
         // Caused by:
         // All the wakers and the join handle are dropped before the task is completed or closed.
         // More specifically, this condition is caused by:
-        // 1. When JoinHandle drops, the task is not completed and not closed, and the reference counter of the task is dropped to zero.
-        // 2. When the waker drops, the task is not completed and not closed, the reference counter of the task is dropped to zero, 
-        //    and the HANDLE field is cleared.
-        // There will be no concurrent access to the task object in this condition, because there is no active objects that can modify
-        // the content of the task.
-        // Because no one cares about the state of the task any more, the scheduled task should drop its future and destroy itself.
-        // Therefore, at the beginning of the run method, we should load the state variable and check if the state is turned to CLOSED.
+        // 1. When JoinHandle drops, the task is not completed and not closed, and the reference counter of the task 
+        //    is dropped to zero.
+        // 2. When the waker drops, the task is not completed and not closed, the reference counter of the task is dropped
+        //     to zero, and the HANDLE field is cleared.
+        // There will be no concurrent access to the task object in this condition, because there is no active objects 
+        // that can modify the content of the task.
+        // Because no one cares about the state of the task any more, the scheduled task should drop its future and destroy
+        // itself.
+        // Therefore, at the beginning of the run method, we should load the state variable and check if the state is turned
+        // to CLOSED.
         // If so, we should immediately drop the future and destroy the task object.
+
+        // Condition 2
+        // Initial state:
+        // SCHEDULED + !RUNNING + !COMPLETED + CLOSED + REFERENCE >= 1 + (!HANDLE or HANDLE)
+        // Caused by:
+        // The cancel method of the JoinHandle is called, the task is not completed, not closed, not running and not scheduled.
+        // Under this condition, we will schedule the task to drop its future.
+        // Other concurrent things that may happen:
+        // 1. Waker wake up: do nothing because the state has turned closed.
+        // 2. Waker drop : do nothing because the state has turned closed and the task holds a reference. Waker drop will not 
+        //    turn the refenence count into zero.
+        // 3. JoinHandle cancels again: do nothing because the state has turned closed.
+        // 4. JoinHandle drops: do nothing because the state has turned closed and the the task holds a reference.
+        // 5. JoinHandle polls: It will try to check whether the task is not scheduled and running, if so, it will directly 
+        //    return Ready(None). Otherwise, it will register an awaiter and return Pending. 
+        //    *** In this sense, if the task is not  ***
         
 
         let raw = Self::from_ptr(ptr);
