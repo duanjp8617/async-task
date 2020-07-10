@@ -512,13 +512,25 @@ where
         //    So waking up has no effect.
         // 2. Waker drops: When the waker drops, it will decrease the reference counter. But the reference counter will not drop 
         //    to zero in this phase as the task already holds a reference.
-        // 3. 
+        // 3. JoinHandle Drops: It will only unmark the handle, and have no other effects, as the task has already held a 
+        //    reference.
+        // 
 
 
-        // Timeline 1:
-        // Phase1: Start of the function to the first load of the state variable.
-        // Invariant: SCHEDULED, !RUNNING, !COMPLETED, REFERECNE >= 1.
-
+        // Condition 1
+        // Initial state:
+        // SCHEDULED + !RUNNING + !COMPLETED + CLOSED + REFERENCE + !HANDLE
+        // Caused by:
+        // All the wakers and the join handle are dropped before the task is completed or closed.
+        // More specifically, this condition is caused by:
+        // 1. When JoinHandle drops, the task is not completed and not closed, and the reference counter of the task is dropped to zero.
+        // 2. When the waker drops, the task is not completed and not closed, the reference counter of the task is dropped to zero, 
+        //    and the HANDLE field is cleared.
+        // There will be no concurrent access to the task object in this condition, because there is no active objects that can modify
+        // the content of the task.
+        // Because no one cares about the state of the task any more, the scheduled task should drop its future and destroy itself.
+        // Therefore, at the beginning of the run method, we should load the state variable and check if the state is turned to CLOSED.
+        // If so, we should immediately drop the future and destroy the task object.
         
 
         let raw = Self::from_ptr(ptr);
